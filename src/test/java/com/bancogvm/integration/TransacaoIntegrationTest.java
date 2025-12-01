@@ -98,12 +98,8 @@ public class TransacaoIntegrationTest {
         .when()
                 .post("/api/transacoes")
         .then()
-                // Pode retornar 400 ou criar com status FALHOU, ambos são válidos
-                .statusCode(anyOf(is(200), is(201), is(400)))
-                .body(anyOf(
-                        hasEntry(equalTo("statusTransacao"), equalTo("FALHOU")),
-                        hasKey("message")
-                ));
+                .statusCode(anyOf(is(200), is(201)))
+                .body("statusTransacao", equalTo("FALHOU"));
     }
 
     /**
@@ -152,7 +148,7 @@ public class TransacaoIntegrationTest {
                     "tipoTransacao": "DEPOSITO",
                     "valor": 100.00,
                     "descricao": "Depósito 1",
-                    "contaOrigemId": %d
+                    "contaDestinoId": %d
                 }
                 """, contaOrigemId);
 

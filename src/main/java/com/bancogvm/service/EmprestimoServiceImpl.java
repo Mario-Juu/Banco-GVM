@@ -20,6 +20,22 @@ public class EmprestimoServiceImpl implements EmprestimoService {
     public EmprestimoEntity solicitar(EmprestimoEntity e) {
         e.setDataSolicitacao(Instant.now());
         e.setStatusEmprestimo("PENDENTE");
+
+        // Calcular juros compostos: VF = VP * (1 + i)^n
+        if (e.getValorSolicitado() != null && e.getTaxaJurosMensal() != null && e.getNumeroParcelas() != null) {
+            double valorSolicitado = e.getValorSolicitado().doubleValue();
+            double taxaJuros = e.getTaxaJurosMensal().doubleValue();
+            int numeroParcelas = e.getNumeroParcelas();
+
+            // Fórmula de juros compostos
+            double valorTotal = valorSolicitado * Math.pow((1 + taxaJuros), numeroParcelas);
+            e.setValorTotal(BigDecimal.valueOf(valorTotal));
+
+            // Calcular valor da parcela
+            double valorParcela = valorTotal / numeroParcelas;
+            e.setValorParcela(BigDecimal.valueOf(valorParcela));
+        }
+
         return repo.save(e);
     }
 
@@ -34,6 +50,11 @@ public class EmprestimoServiceImpl implements EmprestimoService {
     }
 
     public EmprestimoEntity rejeitar(Long id, String motivo) {
+        // Validar motivo obrigatório
+        if (motivo == null || motivo.trim().isEmpty()) {
+            throw new IllegalArgumentException("Motivo de rejeição é obrigatório");
+        }
+
         EmprestimoEntity e = repo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Empréstimo não encontrado"));
         e.setStatusEmprestimo("REJEITADO");

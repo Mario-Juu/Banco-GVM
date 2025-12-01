@@ -3,6 +3,7 @@ package com.bancogvm.integration;
 import com.bancogvm.repository.ClienteRepository;
 import com.bancogvm.repository.ContaRepository;
 import com.bancogvm.repository.EmprestimoRepository;
+import com.bancogvm.repository.TransacaoRepository;
 import com.bancogvm.service.model.ClienteEntity;
 import com.bancogvm.service.model.ContaCorrenteEntity;
 import io.restassured.RestAssured;
@@ -44,6 +45,9 @@ public class EmprestimoIntegrationTest {
     @Autowired
     private ContaRepository contaRepository;
 
+    @Autowired
+    private TransacaoRepository transacaoRepository;
+
     private Long clienteId;
     private Long contaId;
 
@@ -52,6 +56,7 @@ public class EmprestimoIntegrationTest {
         RestAssured.port = port;
         RestAssured.baseURI = "http://localhost";
         emprestimoRepository.deleteAll();
+        transacaoRepository.deleteAll();
         contaRepository.deleteAll();
         clienteRepository.deleteAll();
 
@@ -85,6 +90,7 @@ public class EmprestimoIntegrationTest {
     @AfterEach
     void tearDown() {
         emprestimoRepository.deleteAll();
+        transacaoRepository.deleteAll();
         contaRepository.deleteAll();
         clienteRepository.deleteAll();
     }
@@ -161,10 +167,8 @@ public class EmprestimoIntegrationTest {
                 .post("/api/emprestimos/" + emprestimoId + "/aprovar")
         .then()
                 .statusCode(anyOf(is(200), is(204)))
-                .body(anyOf(
-                        hasEntry("statusEmprestimo", "APROVADO"),
-                        is(emptyOrNullString())
-                ));
+                .body("statusEmprestimo", equalTo("APROVADO"))
+                .body("valorAprovado", equalTo(12000.00f));
     }
 
     /**
@@ -209,9 +213,7 @@ public class EmprestimoIntegrationTest {
                 .post("/api/emprestimos/" + emprestimoId + "/rejeitar")
         .then()
                 .statusCode(anyOf(is(200), is(204)))
-                .body(anyOf(
-                        hasEntry("statusEmprestimo", "REJEITADO"),
-                        is(emptyOrNullString())
-                ));
+                .body("statusEmprestimo", equalTo("REJEITADO"))
+                .body("motivoRejeicao", equalTo("Renda insuficiente"));
     }
 }

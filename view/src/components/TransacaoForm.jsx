@@ -79,8 +79,8 @@ const TransacaoForm = ({ onBack, onSave }) => {
     setLoading(true);
     try {
       const transacaoData = {
-        contaOrigemId: formData.contaOrigemId || null,
-        contaDestinoId: parseInt(formData.contaDestinoId),
+        contaOrigemId: formData.contaOrigemId ? parseInt(formData.contaOrigemId) : null,
+        contaDestinoId: formData.contaDestinoId ? parseInt(formData.contaDestinoId) : null,
         valor: parseFloat(formData.valor),
         tipoTransacao: formData.tipoTransacao,
         descricao: formData.descricao || null,

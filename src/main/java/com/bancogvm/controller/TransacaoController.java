@@ -25,24 +25,46 @@ public class TransacaoController {
 
     @PostMapping
     public ResponseEntity<TransacaoEntity> criar(@RequestBody TransacaoRequest req) {
-        if (req.getContaDestinoId() == null) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST, "campo contaDestinoId é obrigatório");
-        }
         TransacaoEntity t = new TransacaoEntity();
         t.setValor(req.getValor());
         t.setTipoTransacao(req.getTipoTransacao());
         t.setDescricao(req.getDescricao());
 
-        if (req.getContaOrigemId() != null) {
+        String tipoTransacao = req.getTipoTransacao().toUpperCase();
+
+        // Para DEPOSITO, o dinheiro VAI PARA a conta (contaDestino)
+        if ("DEPOSITO".equals(tipoTransacao)) {
+            if (req.getContaDestinoId() == null) {
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST, "campo contaDestinoId é obrigatório para DEPOSITO");
+            }
+            ContaCorrenteEntity conta = (ContaCorrenteEntity) contaRepo.findById(req.getContaDestinoId())
+                    .orElseThrow(() -> new RuntimeException("Conta não encontrada"));
+            t.setContaOrigem(conta); // Internamente usamos contaOrigem para processar
+        }
+        // Para SAQUE, o dinheiro SAI da conta (contaOrigem)
+        else if ("SAQUE".equals(tipoTransacao)) {
+            if (req.getContaOrigemId() == null) {
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST, "campo contaOrigemId é obrigatório para SAQUE");
+            }
+            ContaCorrenteEntity conta = (ContaCorrenteEntity) contaRepo.findById(req.getContaOrigemId())
+                    .orElseThrow(() -> new RuntimeException("Conta não encontrada"));
+            t.setContaOrigem(conta);
+        }
+        // Para TRANSFERENCIA, usamos ambas as contas
+        else if ("TRANSFERENCIA".equals(tipoTransacao)) {
+            if (req.getContaOrigemId() == null || req.getContaDestinoId() == null) {
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST, "campos contaOrigemId e contaDestinoId são obrigatórios para TRANSFERENCIA");
+            }
             ContaCorrenteEntity origem = (ContaCorrenteEntity) contaRepo.findById(req.getContaOrigemId())
                     .orElseThrow(() -> new RuntimeException("Conta origem não encontrada"));
+            ContaCorrenteEntity destino = (ContaCorrenteEntity) contaRepo.findById(req.getContaDestinoId())
+                    .orElseThrow(() -> new RuntimeException("Conta destino não encontrada"));
             t.setContaOrigem(origem);
+            t.setContaDestino(destino);
         }
-
-        ContaCorrenteEntity destino = (ContaCorrenteEntity) contaRepo.findById(req.getContaDestinoId())
-                .orElseThrow(() -> new RuntimeException("Conta destino não encontrada"));
-        t.setContaDestino(destino);
 
         TransacaoEntity salvo = service.registrar(t);
         return ResponseEntity.ok(salvo);

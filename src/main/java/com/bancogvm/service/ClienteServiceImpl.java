@@ -18,6 +18,11 @@ public class ClienteServiceImpl implements ClienteService {
 
     @Override
     public ClienteEntity cadastrar(ClienteEntity cliente) {
+        // Validar CPF duplicado
+        if (repo.findByCpf(cliente.getCpf()).isPresent()) {
+            throw new IllegalArgumentException("CPF já cadastrado");
+        }
+
         cliente.setDataCadastro(Instant.now());
         // aqui você pode hashear a senha antes de salvar
         return repo.save(cliente);

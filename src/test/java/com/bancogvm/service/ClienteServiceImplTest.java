@@ -107,8 +107,8 @@ public class ClienteServiceImplTest {
         // Then
         assertThatThrownBy(() -> {
             clienteService.cadastrar(clienteDuplicado);
-            clienteRepository.flush(); // Forçar flush para verificar constraint
-        }).isInstanceOf(Exception.class);
+        }).isInstanceOf(IllegalArgumentException.class)
+          .hasMessageContaining("CPF já cadastrado");
     }
 
     /**

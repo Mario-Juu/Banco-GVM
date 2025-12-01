@@ -2,6 +2,7 @@ package com.bancogvm.integration;
 
 import com.bancogvm.repository.ClienteRepository;
 import com.bancogvm.repository.ContaRepository;
+import com.bancogvm.repository.TransacaoRepository;
 import com.bancogvm.service.model.ClienteEntity;
 import io.restassured.RestAssured;
 import io.restassured.http.ContentType;
@@ -38,12 +39,16 @@ public class ContaIntegrationTest {
     @Autowired
     private ClienteRepository clienteRepository;
 
+    @Autowired
+    private TransacaoRepository transacaoRepository;
+
     private Long clienteId;
 
     @BeforeEach
     void setUp() {
         RestAssured.port = port;
         RestAssured.baseURI = "http://localhost";
+        transacaoRepository.deleteAll();
         contaRepository.deleteAll();
         clienteRepository.deleteAll();
 
@@ -65,6 +70,7 @@ public class ContaIntegrationTest {
 
     @AfterEach
     void tearDown() {
+        transacaoRepository.deleteAll();
         contaRepository.deleteAll();
         clienteRepository.deleteAll();
     }
@@ -135,7 +141,7 @@ public class ContaIntegrationTest {
                     "tipoTransacao": "DEPOSITO",
                     "valor": 200.00,
                     "descricao": "Depósito teste",
-                    "contaOrigemId": %d
+                    "contaDestinoId": %d
                 }
                 """, contaId);
 

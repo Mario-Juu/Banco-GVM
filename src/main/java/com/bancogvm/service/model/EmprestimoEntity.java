@@ -28,6 +28,8 @@ public class EmprestimoEntity {
     private BigDecimal valorAprovado;
     private BigDecimal taxaJurosMensal;
     private Integer numeroParcelas;
+    private BigDecimal valorTotal;
+    private BigDecimal valorParcela;
 
     private Instant dataSolicitacao;
     private Instant dataAprovacao;

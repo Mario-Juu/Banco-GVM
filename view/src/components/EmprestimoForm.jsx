@@ -76,10 +76,8 @@ const EmprestimoForm = ({ onBack, onSave }) => {
         valorSolicitado: parseFloat(formData.valorSolicitado),
         taxaJurosMensal: parseFloat(formData.taxaJurosMensal),
         numeroParcelas: parseInt(formData.numeroParcelas),
-        dataSolicitacao: new Date().toISOString(),
-        statusEmprestimo: 'PENDENTE',
-        cliente: { id: parseInt(formData.clienteId) },
-        contaCredito: { id: parseInt(formData.contaCreditoId) },
+        clienteId: parseInt(formData.clienteId),
+        contaCreditoId: parseInt(formData.contaCreditoId),
       };
 
       const savedEmprestimo = await ApiService.createEmprestimo(emprestimoData);

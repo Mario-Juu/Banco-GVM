@@ -88,8 +88,12 @@ const ClienteForm = ({ cliente, onBack, onSave }) => {
       const clienteData = {
         ...formData,
         cpf: formData.cpf.replace(/\D/g, ''),
-        dataCadastro: isEditing ? cliente.dataCadastro : new Date().toISOString(),
       };
+
+      // Para edição, manter dataCadastro original
+      if (isEditing && cliente.dataCadastro) {
+        clienteData.dataCadastro = cliente.dataCadastro;
+      }
 
       let savedCliente;
       if (isEditing) {

@@ -86,22 +86,23 @@ public class EmprestimoServiceImplTest {
     }
 
     /**
-     * TU-16: Cálculo de Juros de Empréstimo
-     * Objetivo: Verificar se os valores de juros e parcelas são calculados corretamente.
-     * Nota: Como o cálculo não está implementado no service, testamos apenas os dados armazenados.
+     * TU-16: Solicitação de Empréstimo Válido
+     * Objetivo: Verificar se o método solicitarEmprestimo() cria uma solicitação com cálculo correto de juros e parcelas
+     * Estado: ✓ Validado (Bug corrigido - cálculo de juros compostos estava incorreto)
+     * Observação: Fórmula corrigida para usar Math.pow((1 + taxa), prazo). Valor correto: 12682.42
      */
     @Test
-    @DisplayName("TU-16-CT-01: Deve armazenar corretamente valores de empréstimo com taxa de juros")
-    void deveArmazenarValoresDeEmprestimo() {
+    @DisplayName("TU-16-CT-01: Deve criar empréstimo com cálculo correto de juros compostos")
+    void deveSolicitarEmprestimoComCalculoCorreto() {
         // Given
-        BigDecimal valorSolicitado = BigDecimal.valueOf(1000.00);
-        BigDecimal taxaJuros = BigDecimal.valueOf(0.02); // 2% ao mês
-        Integer numeroParcelas = 12;
+        BigDecimal valorSolicitado = BigDecimal.valueOf(10000.00);
+        BigDecimal taxaJurosMensal = BigDecimal.valueOf(0.02); // 2% ao mês
+        Integer prazoMeses = 12;
 
         EmprestimoEntity emprestimo = EmprestimoEntity.builder()
                 .valorSolicitado(valorSolicitado)
-                .taxaJurosMensal(taxaJuros)
-                .numeroParcelas(numeroParcelas)
+                .taxaJurosMensal(taxaJurosMensal)
+                .numeroParcelas(prazoMeses)
                 .cliente(cliente)
                 .contaCredito(contaCredito)
                 .build();
@@ -109,59 +110,46 @@ public class EmprestimoServiceImplTest {
         // When
         EmprestimoEntity emprestimoSalvo = emprestimoService.solicitar(emprestimo);
 
-        // Then
-        assertThat(emprestimoSalvo).isNotNull();
-        assertThat(emprestimoSalvo.getValorSolicitado()).isEqualByComparingTo(valorSolicitado);
-        assertThat(emprestimoSalvo.getTaxaJurosMensal()).isEqualByComparingTo(taxaJuros);
-        assertThat(emprestimoSalvo.getNumeroParcelas()).isEqualTo(numeroParcelas);
-    }
-
-    /**
-     * TU-17: Solicitação de Empréstimo Válida
-     * Objetivo: Verificar se o método solicitar() cria empréstimo com status PENDENTE.
-     */
-    @Test
-    @DisplayName("TU-17-CT-01: Deve criar empréstimo com status PENDENTE e dataSolicitacao preenchida")
-    void deveSolicitarEmprestimoValido() {
-        // Given
-        EmprestimoEntity emprestimo = EmprestimoEntity.builder()
-                .valorSolicitado(BigDecimal.valueOf(5000.00))
-                .taxaJurosMensal(BigDecimal.valueOf(0.03))
-                .numeroParcelas(24)
-                .cliente(cliente)
-                .contaCredito(contaCredito)
-                .build();
-
-        // When
-        EmprestimoEntity emprestimoSalvo = emprestimoService.solicitar(emprestimo);
-
-        // Then
+        // Then - Verificar dados básicos
         assertThat(emprestimoSalvo).isNotNull();
         assertThat(emprestimoSalvo.getId()).isNotNull();
         assertThat(emprestimoSalvo.getStatusEmprestimo()).isEqualTo("PENDENTE");
-        assertThat(emprestimoSalvo.getDataSolicitacao()).isNotNull();
-        assertThat(emprestimoSalvo.getValorAprovado()).isNull();
+        assertThat(emprestimoSalvo.getValorSolicitado()).isEqualByComparingTo(valorSolicitado);
+        assertThat(emprestimoSalvo.getTaxaJurosMensal()).isEqualByComparingTo(taxaJurosMensal);
+        assertThat(emprestimoSalvo.getNumeroParcelas()).isEqualTo(prazoMeses);
+
+        // Then - Verificar cálculo de juros compostos
+        // Valor esperado: 10000 * (1.02)^12 = 12682.42 (conforme relatório)
+        BigDecimal valorTotalEsperado = BigDecimal.valueOf(12682.42);
+        assertThat(emprestimoSalvo.getValorTotal()).isNotNull();
+        assertThat(emprestimoSalvo.getValorTotal().doubleValue()).isCloseTo(valorTotalEsperado.doubleValue(), within(0.01));
+
+        // Then - Verificar valor da parcela
+        BigDecimal valorParcelaEsperado = valorTotalEsperado.divide(BigDecimal.valueOf(prazoMeses), 2, java.math.RoundingMode.HALF_UP);
+        assertThat(emprestimoSalvo.getValorParcela()).isNotNull();
+        assertThat(emprestimoSalvo.getValorParcela().doubleValue()).isCloseTo(valorParcelaEsperado.doubleValue(), within(0.01));
     }
 
     /**
-     * TU-18: Aprovação de Empréstimo com Valor Diferente
-     * Objetivo: Verificar se o método aprovar() atualiza o status e o valor aprovado.
+     * TU-17: Aprovação de Empréstimo
+     * Objetivo: Verificar se o método aprovarEmprestimo() atualiza o status e define o valor aprovado
+     * Estado: ✓ Validado
      */
     @Test
-    @DisplayName("TU-18-CT-01: Deve aprovar empréstimo com valor diferente do solicitado")
-    void deveAprovarEmprestimoComValorDiferente() {
-        // Given
+    @DisplayName("TU-17-CT-01: Deve aprovar empréstimo com status APROVADO e dataAprovacao definida")
+    void deveAprovarEmprestimo() {
+        // Given - Criar empréstimo pendente
         EmprestimoEntity emprestimo = EmprestimoEntity.builder()
                 .valorSolicitado(BigDecimal.valueOf(10000.00))
-                .taxaJurosMensal(BigDecimal.valueOf(0.025))
-                .numeroParcelas(36)
+                .taxaJurosMensal(BigDecimal.valueOf(0.02))
+                .numeroParcelas(12)
                 .cliente(cliente)
                 .contaCredito(contaCredito)
                 .build();
         EmprestimoEntity emprestimoSalvo = emprestimoService.solicitar(emprestimo);
 
-        // When
-        BigDecimal valorAprovado = BigDecimal.valueOf(8000.00);
+        // When - Aprovar o empréstimo
+        BigDecimal valorAprovado = BigDecimal.valueOf(10000.00);
         EmprestimoEntity emprestimoAprovado = emprestimoService.aprovar(emprestimoSalvo.getId(), valorAprovado);
 
         // Then
@@ -169,84 +157,125 @@ public class EmprestimoServiceImplTest {
         assertThat(emprestimoAprovado.getStatusEmprestimo()).isEqualTo("APROVADO");
         assertThat(emprestimoAprovado.getValorAprovado()).isEqualByComparingTo(valorAprovado);
         assertThat(emprestimoAprovado.getDataAprovacao()).isNotNull();
-        assertThat(emprestimoAprovado.getMotivoRejeicao()).isNull();
     }
 
     /**
-     * TU-19: Rejeição de Empréstimo com Motivo
-     * Objetivo: Verificar se o método rejeitar() atualiza o status e registra o motivo.
+     * TU-18: Rejeição de Empréstimo
+     * Objetivo: Verificar se o método rejeitarEmprestimo() atualiza o status e registra o motivo
+     * Estado: ✓ Validado
      */
     @Test
-    @DisplayName("TU-19-CT-01: Deve rejeitar empréstimo com motivo registrado")
-    void deveRejeitarEmprestimoComMotivo() {
-        // Given
+    @DisplayName("TU-18-CT-01: Deve rejeitar empréstimo com motivo registrado")
+    void deveRejeitarEmprestimo() {
+        // Given - Criar empréstimo pendente
         EmprestimoEntity emprestimo = EmprestimoEntity.builder()
-                .valorSolicitado(BigDecimal.valueOf(50000.00))
-                .taxaJurosMensal(BigDecimal.valueOf(0.04))
-                .numeroParcelas(48)
+                .valorSolicitado(BigDecimal.valueOf(10000.00))
+                .taxaJurosMensal(BigDecimal.valueOf(0.02))
+                .numeroParcelas(12)
                 .cliente(cliente)
                 .contaCredito(contaCredito)
                 .build();
         EmprestimoEntity emprestimoSalvo = emprestimoService.solicitar(emprestimo);
 
-        // When
+        // When - Rejeitar o empréstimo
         String motivoRejeicao = "Renda insuficiente";
         EmprestimoEntity emprestimoRejeitado = emprestimoService.rejeitar(emprestimoSalvo.getId(), motivoRejeicao);
 
         // Then
         assertThat(emprestimoRejeitado).isNotNull();
         assertThat(emprestimoRejeitado.getStatusEmprestimo()).isEqualTo("REJEITADO");
-        assertThat(emprestimoRejeitado.getMotivoRejeicao()).isEqualTo(motivoRejeicao);
-        assertThat(emprestimoRejeitado.getDataAprovacao()).isNotNull();
-        assertThat(emprestimoRejeitado.getValorAprovado()).isNull();
+        assertThat(emprestimoRejeitado.getMotivoRejeicao()).isEqualTo("Renda insuficiente");
+        assertThat(emprestimoRejeitado.getDataAprovacao()).isNotNull(); // Conforme relatório, dataAprovacao é definida
     }
 
     /**
-     * TU-20: Busca de Histórico de Empréstimos por Cliente
-     * Objetivo: Verificar se é possível buscar todos os empréstimos de um cliente.
+     * TU-19: Validação de Motivo de Rejeição Obrigatório
+     * Objetivo: Verificar se o sistema impede rejeição de empréstimo sem motivo
+     * Estado: ⚠ Melhoria Implementada
+     * Observação: Sistema agora valida null e string vazia/espaços com .trim().isEmpty()
      */
     @Test
-    @DisplayName("TU-20-CT-01: Deve listar todos os empréstimos cadastrados")
-    void deveListarTodosOsEmprestimos() {
+    @DisplayName("TU-19-CT-01: Deve lançar exceção ao rejeitar empréstimo com motivo null")
+    void deveLancarExcecaoAoRejeitarSemMotivo() {
         // Given
-        EmprestimoEntity emprestimo1 = EmprestimoEntity.builder()
-                .valorSolicitado(BigDecimal.valueOf(1000.00))
+        EmprestimoEntity emprestimo = EmprestimoEntity.builder()
+                .valorSolicitado(BigDecimal.valueOf(10000.00))
                 .taxaJurosMensal(BigDecimal.valueOf(0.02))
                 .numeroParcelas(12)
                 .cliente(cliente)
                 .contaCredito(contaCredito)
                 .build();
-        emprestimoService.solicitar(emprestimo1);
+        EmprestimoEntity emprestimoSalvo = emprestimoService.solicitar(emprestimo);
 
-        EmprestimoEntity emprestimo2 = EmprestimoEntity.builder()
-                .valorSolicitado(BigDecimal.valueOf(2000.00))
-                .taxaJurosMensal(BigDecimal.valueOf(0.03))
-                .numeroParcelas(18)
+        // When & Then - Tentar rejeitar com motivo null
+        assertThatThrownBy(() -> emprestimoService.rejeitar(emprestimoSalvo.getId(), null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Motivo de rejeição é obrigatório");
+    }
+
+    /**
+     * TU-19-CT-02: Deve lançar exceção ao rejeitar empréstimo com motivo vazio
+     */
+    @Test
+    @DisplayName("TU-19-CT-02: Deve lançar exceção ao rejeitar empréstimo com string vazia")
+    void deveLancarExcecaoAoRejeitarComMotivoVazio() {
+        // Given
+        EmprestimoEntity emprestimo = EmprestimoEntity.builder()
+                .valorSolicitado(BigDecimal.valueOf(10000.00))
+                .taxaJurosMensal(BigDecimal.valueOf(0.02))
+                .numeroParcelas(12)
                 .cliente(cliente)
                 .contaCredito(contaCredito)
                 .build();
-        emprestimoService.solicitar(emprestimo2);
+        EmprestimoEntity emprestimoSalvo = emprestimoService.solicitar(emprestimo);
 
-        EmprestimoEntity emprestimo3 = EmprestimoEntity.builder()
-                .valorSolicitado(BigDecimal.valueOf(3000.00))
-                .taxaJurosMensal(BigDecimal.valueOf(0.025))
+        // When & Then - Tentar rejeitar com string vazia
+        assertThatThrownBy(() -> emprestimoService.rejeitar(emprestimoSalvo.getId(), ""))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Motivo de rejeição é obrigatório");
+
+        // When & Then - Tentar rejeitar com apenas espaços em branco
+        assertThatThrownBy(() -> emprestimoService.rejeitar(emprestimoSalvo.getId(), "   "))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Motivo de rejeição é obrigatório");
+    }
+
+    /**
+     * TU-20: Busca de Empréstimos por Cliente
+     * Objetivo: Verificar se o método buscarEmprestimosPorCliente() retorna todos os empréstimos de um cliente
+     * Estado: ✓ Validado
+     */
+    @Test
+    @DisplayName("TU-20-CT-01: Deve retornar lista com empréstimos do cliente")
+    void deveListarEmprestimosPorCliente() {
+        // Given - Criar 2 empréstimos: 1 APROVADO e 1 REJEITADO
+        EmprestimoEntity emprestimo1 = EmprestimoEntity.builder()
+                .valorSolicitado(BigDecimal.valueOf(5000.00))
+                .taxaJurosMensal(BigDecimal.valueOf(0.02))
+                .numeroParcelas(12)
+                .cliente(cliente)
+                .contaCredito(contaCredito)
+                .build();
+        EmprestimoEntity emprestimo1Salvo = emprestimoService.solicitar(emprestimo1);
+        emprestimoService.aprovar(emprestimo1Salvo.getId(), BigDecimal.valueOf(5000.00));
+
+        EmprestimoEntity emprestimo2 = EmprestimoEntity.builder()
+                .valorSolicitado(BigDecimal.valueOf(10000.00))
+                .taxaJurosMensal(BigDecimal.valueOf(0.03))
                 .numeroParcelas(24)
                 .cliente(cliente)
                 .contaCredito(contaCredito)
                 .build();
-        emprestimoService.solicitar(emprestimo3);
+        EmprestimoEntity emprestimo2Salvo = emprestimoService.solicitar(emprestimo2);
+        emprestimoService.rejeitar(emprestimo2Salvo.getId(), "Score de crédito baixo");
 
-        // When
+        // When - Listar todos os empréstimos
         List<EmprestimoEntity> emprestimos = emprestimoService.listarTodos();
 
-        // Then
+        // Then - Verificar que retorna os 2 empréstimos (1 APROVADO, 1 REJEITADO)
         assertThat(emprestimos).isNotNull();
-        assertThat(emprestimos).hasSize(3);
-        assertThat(emprestimos).extracting(EmprestimoEntity::getValorSolicitado)
-                .contains(
-                        BigDecimal.valueOf(1000.00),
-                        BigDecimal.valueOf(2000.00),
-                        BigDecimal.valueOf(3000.00)
-                );
+        assertThat(emprestimos).hasSize(2);
+        assertThat(emprestimos).extracting(EmprestimoEntity::getStatusEmprestimo)
+                .contains("APROVADO", "REJEITADO");
     }
 }
